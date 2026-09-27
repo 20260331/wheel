@@ -18,6 +18,7 @@ def pack(
     dest_dir: str,
     build_number: str | None,
     local_version: str | None = None,
+    provenance: bool = False,
 ) -> None:
     """Repack a previously unpacked wheel directory into a new wheel file.
 
@@ -28,6 +29,7 @@ def pack(
     :param dest_dir: Destination directory (defaults to the current directory)
     :param build_number: Build tag to use in the wheel name
     :param local_version: Local version identifier to add or replace
+    :param provenance: Generate a ``.dist-info/PROVENANCE`` statement
     """
     # Find the .dist-info directory
     dist_info_dirs = [
@@ -119,7 +121,9 @@ def pack(
     wheel_path = os.path.join(dest_dir, f"{name_version}-{tagline}.whl")
     with WheelFile(wheel_path, "w") as wf:
         print(f"Repacking wheel as {wheel_path}...", end="", flush=True)
-        wf.write_files(directory)
+        wf.write_files(directory, provenance=provenance)
+        if provenance:
+            wf.write_provenance(tags)
 
     print("OK")
 

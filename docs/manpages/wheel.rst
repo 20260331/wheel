@@ -29,6 +29,9 @@ Commands
   ``info``
     Show information about a wheel file
 
+  ``verify``
+    Verify the provenance statement embedded in a wheel (offline)
+
   ``tags``
     Change the tags on a wheel file
 

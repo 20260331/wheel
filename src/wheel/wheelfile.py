@@ -79,6 +79,7 @@ class WheelFile(ZipFile):
             self.parsed_filename.group("namever")
         )
         self.record_path = self.dist_info_path + "/RECORD"
+        self.provenance_path = self.dist_info_path + "/PROVENANCE"
         self._file_hashes: dict[str, tuple[None, None] | tuple[int, bytes]] = {}
         self._file_sizes = {}
         if mode == "r":
@@ -165,7 +166,7 @@ class WheelFile(ZipFile):
 
         return ef
 
-    def write_files(self, base_dir: str) -> None:
+    def write_files(self, base_dir: str, provenance: bool = False) -> None:
         log.info("creating %r and adding %r to it", self.filename, base_dir)
         deferred: list[tuple[str, str]] = []
         for root, dirnames, filenames in os.walk(base_dir):
@@ -177,6 +178,10 @@ class WheelFile(ZipFile):
                 if os.path.isfile(path):
                     arcname = os.path.relpath(path, base_dir).replace(os.path.sep, "/")
                     if arcname == self.record_path:
+                        pass
+                    elif provenance and arcname == self.provenance_path:
+                        # A fresh provenance statement is generated after the
+                        # rest of the files have been written.
                         pass
                     elif root.endswith(".dist-info"):
                         deferred.append((path, arcname))
@@ -234,6 +239,29 @@ class WheelFile(ZipFile):
                 urlsafe_b64encode(hash_.digest()).decode("ascii"),
             )
             self._file_sizes[fname] = len(data)
+
+    def write_provenance(self, tags: list[str]) -> None:
+        """Generate and add the ``.dist-info/PROVENANCE`` statement.
+
+        Must be called after all other files have been written and before
+        :meth:`close` writes ``RECORD``, so that the statement itself is
+        recorded in ``RECORD`` with a hash.
+
+        :param tags: Target compatibility tags read from ``.dist-info/WHEEL``
+        """
+        from ._provenance import build_provenance
+
+        file_digests = {
+            fname: (f"{algorithm}={digest}", self._file_sizes[fname])
+            for fname, (algorithm, digest) in self._file_hashes.items()
+            if fname != self.record_path and fname != self.provenance_path
+        }
+        data = build_provenance(
+            dist_info_path=self.dist_info_path,
+            file_digests=file_digests,
+            tags=tags,
+        )
+        self.writestr(self.provenance_path, data)
 
     def close(self) -> None:
         # Write RECORD

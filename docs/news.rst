@@ -3,6 +3,15 @@ Release Notes
 
 **UNRELEASED**
 
+- Added optional, keyless build provenance attestations: ``wheel pack
+  --provenance`` writes a strictly formatted ``.dist-info/PROVENANCE`` file
+  recording the attestation version, a build input digest, the build tool
+  version, the target tags, the timestamp policy and a SHA-256 hash of every
+  archived file (including the statement itself, which is also recorded in
+  ``RECORD``). The new ``wheel verify`` command checks the statement fully
+  offline, failing on unknown fields, mismatches with the archive, duplicate
+  statements and unsafe file paths. No statement is generated unless
+  ``--provenance`` is given
 - Fixed ``wheel pack --build-number`` accepting build tags that are invalid in a
   wheel file name (not starting with a digit, or containing ``-``), the same
   validation ``wheel tags --build`` already performs

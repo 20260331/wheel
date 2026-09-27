@@ -21,7 +21,13 @@ def unpack_f(args: argparse.Namespace) -> None:
 def pack_f(args: argparse.Namespace) -> None:
     from .pack import pack
 
-    pack(args.directory, args.dest_dir, args.build_number, args.local_version)
+    pack(
+        args.directory,
+        args.dest_dir,
+        args.build_number,
+        args.local_version,
+        args.provenance,
+    )
 
 
 def convert_f(args: argparse.Namespace) -> None:
@@ -54,6 +60,15 @@ def info_f(args: argparse.Namespace) -> None:
 
     try:
         info(args.wheelfile, args.verbose)
+    except FileNotFoundError as e:
+        raise WheelError(str(e)) from e
+
+
+def verify_f(args: argparse.Namespace) -> None:
+    from .verify import verify
+
+    try:
+        verify(args.wheelfile)
     except FileNotFoundError as e:
         raise WheelError(str(e)) from e
 
@@ -109,6 +124,12 @@ def parser() -> argparse.ArgumentParser:
     repack_parser.add_argument(
         "--local-version", help="Local version identifier to add or replace"
     )
+    repack_parser.add_argument(
+        "--provenance",
+        action="store_true",
+        help="Generate a keyless, offline-verifiable .dist-info/PROVENANCE "
+        "statement for the wheel",
+    )
     repack_parser.set_defaults(func=pack_f)
 
     convert_parser = s.add_parser("convert", help="Convert egg or wininst to wheel")
@@ -149,6 +170,15 @@ def parser() -> argparse.ArgumentParser:
         "--verbose", "-v", action="store_true", help="Show detailed file listing"
     )
     info_parser.set_defaults(func=info_f)
+
+    verify_parser = s.add_parser(
+        "verify",
+        help="Verify the provenance statement embedded in a wheel (offline)",
+    )
+    verify_parser.add_argument(
+        "wheelfile", help="Wheel file whose provenance to verify"
+    )
+    verify_parser.set_defaults(func=verify_f)
 
     version_parser = s.add_parser("version", help="Print version and exit")
     version_parser.set_defaults(func=version_f)

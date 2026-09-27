@@ -29,6 +29,10 @@ Commands
   ``info``
     Show information about a wheel file
 
+  ``index``
+    Build a deterministic offline manifest and lockfile from wheels in
+    directories
+
   ``tags``
     Change the tags on a wheel file
 

@@ -12,6 +12,32 @@ from argparse import ArgumentTypeError
 from ..wheelfile import WheelError
 
 
+def index_f(args: argparse.Namespace) -> None:
+    from .index import index, print_report
+
+    try:
+        result = index(
+            args.directory,
+            manifest_path=args.manifest,
+            lockfile_path=args.lockfile,
+            projects=args.project,
+            versions=args.version,
+            tags=args.tag,
+            recursive=args.recursive,
+        )
+    except (FileNotFoundError, ValueError) as e:
+        raise WheelError(str(e)) from e
+
+    print_report(result, args.manifest, args.lockfile)
+
+    if args.fail_on_conflict and result.conflicts:
+        noun = "group" if len(result.conflicts) == 1 else "groups"
+        raise WheelError(
+            f"Found {len(result.conflicts)} conflicting candidate {noun}; "
+            f"see {args.manifest}"
+        )
+
+
 def unpack_f(args: argparse.Namespace) -> None:
     from .unpack import unpack
 
@@ -71,6 +97,21 @@ def parse_build_tag(build_tag: str) -> str:
         raise ArgumentTypeError("invalid character ('-') in build tag")
 
     return build_tag
+
+
+def parse_version_filter(version: str) -> str:
+    from packaging.specifiers import InvalidSpecifier, SpecifierSet
+
+    text = version.strip()
+    if not text.startswith(("===", "==", "!=", "~=", ">=", "<=", ">", "<")):
+        text = "==" + text
+
+    try:
+        SpecifierSet(text)
+    except InvalidSpecifier as e:
+        raise ArgumentTypeError(f"invalid version specifier {version!r}: {e}") from e
+
+    return version
 
 
 TAGS_HELP = """\
@@ -149,6 +190,72 @@ def parser() -> argparse.ArgumentParser:
         "--verbose", "-v", action="store_true", help="Show detailed file listing"
     )
     info_parser.set_defaults(func=info_f)
+
+    index_parser = s.add_parser(
+        "index",
+        help="Build a deterministic offline manifest and lockfile from wheels",
+        description=(
+            "Scan one or more directories for wheel files and write a "
+            "deterministic repository manifest and a lockfile. Wheels are "
+            "only read; no files are modified and no network access is made. "
+            "Duplicate (identical content at several paths) and conflicting "
+            "(same project and version but different content) candidates are "
+            "reported in the output and on standard error."
+        ),
+    )
+    index_parser.add_argument(
+        "directory", nargs="+", help="Directory containing wheels"
+    )
+    index_parser.add_argument(
+        "--manifest",
+        metavar="PATH",
+        default="wheel-manifest.json",
+        help="Where to write the manifest (default %(default)s)",
+    )
+    index_parser.add_argument(
+        "--lockfile",
+        metavar="PATH",
+        default="wheel-lock.json",
+        help="Where to write the lockfile (default %(default)s)",
+    )
+    index_parser.add_argument(
+        "--project",
+        metavar="NAME",
+        action="append",
+        default=[],
+        help="Include only wheels of this project (name is normalized; "
+        "may be given multiple times)",
+    )
+    index_parser.add_argument(
+        "--version",
+        metavar="VERSION",
+        action="append",
+        default=[],
+        type=parse_version_filter,
+        help="Include only wheels matching this exact version or PEP 440 "
+        "version specifier (may be given multiple times)",
+    )
+    index_parser.add_argument(
+        "--tag",
+        metavar="TAG",
+        action="append",
+        default=[],
+        help="Include only wheels providing this compatibility tag, e.g. "
+        "py3-none-any (may be given multiple times; a wheel matches if it "
+        "provides any of the given tags)",
+    )
+    index_parser.add_argument(
+        "--no-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Scan only the given directories, without descending into subdirectories",
+    )
+    index_parser.add_argument(
+        "--fail-on-conflict",
+        action="store_true",
+        help="Exit with a non-zero status if conflicting candidates are found",
+    )
+    index_parser.set_defaults(func=index_f, recursive=True)
 
     version_parser = s.add_parser("version", help="Print version and exit")
     version_parser.set_defaults(func=version_f)

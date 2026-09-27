@@ -3,6 +3,13 @@ Release Notes
 
 **UNRELEASED**
 
+- Added an offline ``wheel index`` command that scans one or more directories
+  for wheels and writes a deterministic repository manifest and lockfile. Each
+  entry records the normalized project name and version, compatibility tags,
+  file size and hash, a ``RECORD`` summary, the metadata version and the
+  relative path. Results can be filtered by project, version and tag, and
+  duplicate or conflicting candidates are reported. Wheels are never modified
+  and no network access is made
 - Fixed ``wheel pack --build-number`` accepting build tags that are invalid in a
   wheel file name (not starting with a digit, or containing ``-``), the same
   validation ``wheel tags --build`` already performs

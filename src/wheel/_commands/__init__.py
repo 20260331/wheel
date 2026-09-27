@@ -58,6 +58,25 @@ def info_f(args: argparse.Namespace) -> None:
         raise WheelError(str(e)) from e
 
 
+def delta_f(args: argparse.Namespace) -> None:
+    from .delta import make_delta
+
+    print(
+        make_delta(
+            args.wheelfile,
+            args.overlay,
+            args.dest_dir,
+            allow_version_change=args.allow_version_change,
+        )
+    )
+
+
+def apply_delta_f(args: argparse.Namespace) -> None:
+    from .delta import apply_delta
+
+    print(apply_delta(args.wheelfile, args.delta, args.dest_dir))
+
+
 def version_f(args: argparse.Namespace) -> None:
     from .. import __version__
 
@@ -149,6 +168,56 @@ def parser() -> argparse.ArgumentParser:
         "--verbose", "-v", action="store_true", help="Show detailed file listing"
     )
     info_parser.set_defaults(func=info_f)
+
+    delta_parser = s.add_parser(
+        "delta",
+        help="Create a versioned delta from a base wheel and an overlay",
+        description=(
+            "Compare a base wheel with an overlay (another wheel or an unpacked "
+            "wheel directory) and write a versioned delta describing the added, "
+            "replaced and deleted files and the metadata changes. The overlay "
+            "must keep the same distribution name and compatibility tags; "
+            "version changes require --allow-version-change."
+        ),
+    )
+    delta_parser.add_argument("wheelfile", help="Base wheel file")
+    delta_parser.add_argument(
+        "overlay", help="Overlay wheel file or unpacked wheel directory"
+    )
+    delta_parser.add_argument(
+        "--dest-dir",
+        "-d",
+        default=os.path.curdir,
+        help="Directory to store the delta in (default %(default)s)",
+    )
+    delta_parser.add_argument(
+        "--allow-version-change",
+        action="store_true",
+        help="Allow the overlay to use a different distribution version",
+    )
+    delta_parser.set_defaults(func=delta_f)
+
+    apply_delta_parser = s.add_parser(
+        "apply-delta",
+        help="Apply a versioned delta to a base wheel",
+        description=(
+            "Verify the base wheel (whole-file digest, RECORD manifest and file "
+            "hashes) and build the resulting wheel with a freshly generated "
+            "RECORD. The result is published atomically; a failed application "
+            "does not leave a partial wheel behind."
+        ),
+    )
+    apply_delta_parser.add_argument("wheelfile", help="Base wheel file")
+    apply_delta_parser.add_argument(
+        "delta", help="Delta archive created by 'wheel delta'"
+    )
+    apply_delta_parser.add_argument(
+        "--dest-dir",
+        "-d",
+        default=os.path.curdir,
+        help="Directory to store the resulting wheel in (default %(default)s)",
+    )
+    apply_delta_parser.set_defaults(func=apply_delta_f)
 
     version_parser = s.add_parser("version", help="Print version and exit")
     version_parser.set_defaults(func=version_f)

@@ -3,6 +3,14 @@ Release Notes
 
 **UNRELEASED**
 
+- Added ``wheel delta`` and ``wheel apply-delta`` commands for offline wheel
+  overlays. ``wheel delta`` compares a base wheel with another wheel or an
+  unpacked wheel directory and writes a versioned delta describing the added,
+  replaced and deleted files and the metadata changes (version changes require
+  ``--allow-version-change``). ``wheel apply-delta`` verifies the base wheel's
+  digest, ``RECORD`` manifest and file hashes before applying, builds the
+  resulting wheel with a freshly generated, valid ``RECORD``, and publishes it
+  atomically so that a failed application never leaves a partial wheel behind
 - Fixed ``wheel pack --build-number`` accepting build tags that are invalid in a
   wheel file name (not starting with a digit, or containing ``-``), the same
   validation ``wheel tags --build`` already performs
